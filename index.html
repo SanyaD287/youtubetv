@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV YouTube Client</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background-color: #0f0f0f;
+            color: #ffffff;
+            font-family: Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff0000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-box {
+            display: flex;
+            gap: 15px;
+            width: 60%;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 14px 20px;
+            font-size: 16px;
+            background: #121212;
+            border: 2px solid #303030;
+            color: #fff;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #3ea6ff;
+            background: #222;
+        }
+
+        button {
+            padding: 0 30px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:focus, button:hover {
+            background: #cc0000;
+            outline: 2px solid #fff;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .player-wrapper {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .sidebar-history {
+            background: #121212;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #222;
+            overflow: hidden;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #aaa;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            background: #212121;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item:focus, .history-item:hover {
+            border-color: #3ea6ff;
+            background: #272727;
+            outline: none;
+        }
+
+        .placeholder {
+            color: #666;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">▶ YouTube TV</div>
+        <div class="input-box">
+            <input type="text" id="url-input" placeholder="Встав посилання на відео...">
+            <button onclick="playVideo()">Відтворити</button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="player-wrapper" id="player-screen">
+            <div class="placeholder">Оберіть або вставте посилання для перегляду</div>
+        </div>
+
+        <div class="sidebar-history">
+            <div class="sidebar-title">Історія / Черга</div>
+            <div class="history-list" id="history-list">
+                <div style="color: #555; text-align: center; margin-top: 20px;">Історія порожня</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let history = JSON.parse(localStorage.getItem('tv_history') || '[]');
+
+    function extractVideoId(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    }
+
+    function playVideo(customUrl) {
+        const urlInput = document.getElementById('url-input');
+        const targetUrl = customUrl || urlInput.value.trim();
+        const videoId = extractVideoId(targetUrl);
+        const screen = document.getElementById('player-screen');
+
+        if (!videoId) {
+            if (!customUrl) alert('Некоректне посилання!');
+            return;
+        }
+
+        screen.innerHTML = `
+            <iframe 
+                src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&iv_load_policy=3&modestbranding=1&rel=0" 
+                referrerpolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+            </iframe>
+        `;
+
+        // Додаємо в історію, якщо такого ще немає
+        if (!history.includes(targetUrl)) {
+            history.unshift(targetUrl);
+            if (history.length > 10) history.pop(); // зберігаємо останні 10
+            localStorage.setItem('tv_history', JSON.stringify(history));
+            renderHistory();
+        }
+        
+        if (!customUrl) urlInput.value = '';
+    }
+
+    function renderHistory() {
+        const listEl = document.getElementById('history-list');
+        if (history.length === 0) {
+            listEl.innerHTML = '<div style="color: #555; text-align: center; margin-top: 20px;">Історія порожня</div>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        history.forEach((item) => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.tabIndex = 0; // робить елемент доступним для фокусу пульта
+            div.textContent = item;
+            div.onclick = () => playVideo(item);
+            div.onkeypress = (e) => { if (e.key === 'Enter') playVideo(item); };
+            listEl.appendChild(div);
+        });
+    }
+
+    document.getElementById('url-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            playVideo();
+        }
+    });
+
+    // Завантажуємо історію при старті
+    renderHistory();
+</script>
+
+</body>
+</html>
