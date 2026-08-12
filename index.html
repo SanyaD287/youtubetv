@@ -107,11 +107,33 @@
             overflow: hidden;
         }
 
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
         .sidebar-title {
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 15px;
             color: #aaa;
+        }
+
+        .clear-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .clear-btn:focus, .clear-btn:hover {
+            color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            outline: 1px solid #ff0000;
         }
 
         .history-list {
@@ -163,7 +185,10 @@
         </div>
 
         <div class="sidebar-history">
-            <div class="sidebar-title">Історія / Черга</div>
+            <div class="sidebar-header">
+                <div class="sidebar-title">Історія</div>
+                <button class="clear-btn" onclick="clearHistory()">Очистити</button>
+            </div>
             <div class="history-list" id="history-list">
                 <div style="color: #555; text-align: center; margin-top: 20px;">Історія порожня</div>
             </div>
@@ -199,15 +224,21 @@
             </iframe>
         `;
 
-        // Додаємо в історію, якщо такого ще немає
-        if (!history.includes(targetUrl)) {
-            history.unshift(targetUrl);
-            if (history.length > 10) history.pop(); // зберігаємо останні 10
-            localStorage.setItem('tv_history', JSON.stringify(history));
-            renderHistory();
-        }
+        // Уникаємо дублікатів в історії
+        history = history.filter(item => item !== targetUrl);
+        history.unshift(targetUrl);
+        if (history.length > 10) history.pop();
+        
+        localStorage.setItem('tv_history', JSON.stringify(history));
+        renderHistory();
         
         if (!customUrl) urlInput.value = '';
+    }
+
+    function clearHistory() {
+        history = [];
+        localStorage.removeItem('tv_history');
+        renderHistory();
     }
 
     function renderHistory() {
@@ -221,7 +252,7 @@
         history.forEach((item) => {
             const div = document.createElement('div');
             div.className = 'history-item';
-            div.tabIndex = 0; // робить елемент доступним для фокусу пульта
+            div.tabIndex = 0;
             div.textContent = item;
             div.onclick = () => playVideo(item);
             div.onkeypress = (e) => { if (e.key === 'Enter') playVideo(item); };
@@ -235,7 +266,6 @@
         }
     });
 
-    // Завантажуємо історію при старті
     renderHistory();
 </script>
 
