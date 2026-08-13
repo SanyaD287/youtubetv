@@ -91,7 +91,7 @@
             position: relative;
         }
 
-        iframe {
+        #player {
             width: 100%;
             height: 100%;
             border: none;
@@ -175,19 +175,20 @@
         <div class="logo">▶ YouTube TV</div>
         <div class="input-box">
             <input type="text" id="url-input" placeholder="Встав посилання на відео...">
-            <button onclick="playVideo()">Відтворити</button>
+            <button id="play-btn" onclick="playVideo()">Відтворити</button>
         </div>
     </div>
 
     <div class="main-layout">
         <div class="player-wrapper" id="player-screen">
-            <div class="placeholder">Оберіть або вставте посилання для перегляду</div>
+            <div class="placeholder" id="placeholder-text">Оберіть або вставте посилання для перегляду</div>
+            <div id="player"></div>
         </div>
 
         <div class="sidebar-history">
             <div class="sidebar-header">
                 <div class="sidebar-title">Історія</div>
-                <button class="clear-btn" onclick="clearHistory()">Очистити</button>
+                <button class="clear-btn" id="clear-history-btn" onclick="clearHistory()">Очистити</button>
             </div>
             <div class="history-list" id="history-list">
                 <div style="color: #555; text-align: center; margin-top: 20px;">Історія порожня</div>
@@ -195,8 +196,12 @@
         </div>
     </div>
 
+<!-- Підключаємо офіційний YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
     let history = JSON.parse(localStorage.getItem('tv_history') || '[]');
+    let ytPlayer = null;
+    let currentVideoId = null;
 
     function extractVideoId(url) {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -204,27 +209,48 @@
         return (match && match[2].length === 11) ? match[2] : null;
     }
 
+    // Ініціалізація YouTube API плеєра
+    function onYouTubeIframeAPIReady() {
+        // Плеєр створиться автоматично при першому запуску
+    }
+
     function playVideo(customUrl) {
         const urlInput = document.getElementById('url-input');
         const targetUrl = customUrl || urlInput.value.trim();
         const videoId = extractVideoId(targetUrl);
-        const screen = document.getElementById('player-screen');
+        const placeholder = document.getElementById('placeholder-text');
 
         if (!videoId) {
             if (!customUrl) alert('Некоректне посилання!');
             return;
         }
 
-        screen.innerHTML = `
-            <iframe 
-                src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&iv_load_policy=3&modestbranding=1&rel=0" 
-                referrerpolicy="strict-origin-when-cross-origin"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-            </iframe>
-        `;
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
 
-        // Уникаємо дублікатів в історії
+        currentVideoId = videoId;
+
+        if (!ytPlayer) {
+            ytPlayer = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 1,
+                    'iv_load_policy': 3,
+                    'modestbranding': 1,
+                    'rel': 0
+                },
+                events: {
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        } else {
+            ytPlayer.loadVideoById(videoId);
+        }
+
+        // Оновлюємо історію без дублікатів
         history = history.filter(item => item !== targetUrl);
         history.unshift(targetUrl);
         if (history.length > 10) history.pop();
@@ -233,6 +259,25 @@
         renderHistory();
         
         if (!customUrl) urlInput.value = '';
+    }
+
+    // Автоматичне відтворення наступного відео, коли поточне закінчується (стан 0)
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) {
+            playNextInHistory();
+        }
+    }
+
+    function playNextInHistory() {
+        if (history.length <= 1) return;
+        // Шукаємо індекс поточного відео в історії, щоб запустити наступне
+        const currentIndex = history.findIndex(item => extractVideoId(item) === currentVideoId);
+        if (currentIndex !== -1 && currentIndex + 1 < history.length) {
+            playVideo(history[currentIndex + 1]);
+        } else {
+            // Якщо дійшли до кінця, можна почати з початку історії
+            playVideo(history[0]);
+        }
     }
 
     function clearHistory() {
@@ -267,6 +312,49 @@
     });
 
     renderHistory();
+
+    // ==========================================
+    // КЕРУВАННЯ ПУЛЬТОМ (СТРІЛКИ НАВІГАЦІЇ)
+    // ==========================================
+    const focusableElements = [
+        () => document.getElementById('url-input'),
+        () => document.getElementById('play-btn'),
+        () => document.getElementById('clear-history-btn'),
+        () => document.querySelectorAll('.history-item')
+    ];
+
+    document.addEventListener('keydown', function(e) {
+        const activeEl = document.activeElement;
+        
+        // Кнопка Backspace / Back на пультi повертає фокус у поле введення
+        if (e.key === 'Backspace' && activeEl.tagName !== 'INPUT') {
+            e.preventDefault();
+            document.getElementById('url-input').focus();
+            return;
+        }
+
+        // Проста навігація стрілками по вертикалі між історією та елементами керування
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            const historyItems = Array.from(document.querySelectorAll('.history-item'));
+            const allFocusable = [
+                document.getElementById('url-input'),
+                document.getElementById('play-btn'),
+                document.getElementById('clear-history-btn'),
+                ...historyItems
+            ];
+
+            const currentIndex = allFocusable.indexOf(activeEl);
+            if (currentIndex !== -1) {
+                e.preventDefault();
+                let nextIndex = e.key === 'ArrowDown' ? currentIndex + 1 : currentIndex - 1;
+                if (nextIndex >= 0 && nextIndex < allFocusable.length) {
+                    allFocusable[nextIndex].focus();
+                }
+            } else if (historyItems.length > 0 && activeEl.tagName !== 'INPUT') {
+                historyItems[0].focus();
+            }
+        }
+    });
 </script>
 
 </body>
