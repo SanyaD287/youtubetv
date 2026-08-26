@@ -3,116 +3,327 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Android TV YouTube Player</title>
+    <title>VideoSanya • Stream Edition</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --accent: #00b8ff;
+            --accent-glow: rgba(0, 184, 255, 0.25);
+            --accent-gradient: linear-gradient(135deg, #00b8ff 0%, #00ff88 100%);
+            
+            --bg-main: #070709;
+            --bg-surface: rgba(18, 18, 24, 0.7);
+            --bg-surface-hover: rgba(28, 28, 38, 0.85);
+            --bg-card: #111116;
+            
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(0, 184, 255, 0.3);
+            
+            --text-main: #f3f4f6;
+            --text-muted: #8b8d98;
+            
+            --blur-glass: blur(20px);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: Arial, sans-serif;
-            background-color: #000000;
-            color: #ffffff;
+            background-color: var(--bg-main);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 184, 255, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(0, 255, 136, 0.06) 0%, transparent 40%);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            width: 100vw;
+        }
+
+        .main-content {
+            padding: 30px 48px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .app-title {
+            font-size: 26px;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 10px;
+        }
+
+        .add-card {
+            background: var(--bg-surface);
+            backdrop-filter: var(--blur-glass);
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-main);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            flex: 1;
+            transition: all 0.3s;
+        }
+        input[type="text"]:focus { 
+            border-color: var(--accent); 
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        button {
+            background: var(--accent-gradient);
+            color: #070709;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px var(--accent-glow);
+            transition: transform 0.2s, filter 0.2s;
+        }
+        button:hover { filter: brightness(1.15); transform: translateY(-2px); }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+        .secondary-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+        /* Відеоплеєр */
+        .video-container {
+            width: 100%;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            aspect-ratio: 16/9;
+            display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        .container {
-            width: 95%;
-            max-width: 1100px;
-            text-align: center;
-        }
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        input {
-            width: 65%;
-            padding: 12px;
-            font-size: 18px;
-            border: 2px solid #444;
-            border-radius: 6px;
-            background-color: #1a1a1a;
-            color: #fff;
-            outline: none;
-        }
-        /* Підсвічування для пульта телевізора */
-        input:focus {
-            border-color: #ff0000;
-        }
-        button {
-            padding: 12px 25px;
-            font-size: 18px;
-            background-color: #ff0000;
-            color: white;
-            border: 2px solid transparent;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:focus, button:hover {
-            background-color: #cc0000;
-            border-color: #ffffff;
-        }
-        .video-container {
             position: relative;
-            width: 100%;
-            padding-bottom: 56.25%; /* 16:9 */
-            height: 0;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
         }
-        iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
+
+        video {
             width: 100%;
             height: 100%;
-            border: none;
+            outline: none;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            color: var(--text-muted);
+            font-size: 15px;
+            font-weight: 500;
+            position: absolute;
+        }
+
+        /* Список відео */
+        .playlist-container {
+            margin-bottom: 40px;
+        }
+        
+        .playlist-header {
+            display: grid;
+            grid-template-columns: 40px 1fr 100px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 0 16px 8px 16px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 8px;
+        }
+
+        ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+        li {
+            display: grid;
+            grid-template-columns: 40px 1fr 100px;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: var(--bg-surface);
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+        li:hover { background: var(--bg-surface-hover); border-color: rgba(255,255,255,0.12); }
+        li.active { background: rgba(0, 184, 255, 0.07); border-color: var(--accent); }
+        li.active .video-name { color: var(--accent); font-weight: 700; }
+
+        .video-index { color: var(--text-muted); font-size: 13px; }
+        .video-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 15px; }
+        
+        .action-btns { display: flex; gap: 6px; justify-content: flex-end; }
+        .action-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 6px; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+        .del-btn:hover { color: #ff4757 !important; background: rgba(255, 71, 87, 0.1) !important; }
+
+        @media (max-width: 768px) {
+            .main-content { padding: 16px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="controls">
-            <input type="text" id="videoUrl" placeholder="Вставте посилання на YouTube...">
-            <button onclick="loadVideo()">Дивитися</button>
+<div class="app-layout">
+    <div class="main-content">
+        <div class="app-title">🚀 VideoSanya • Stream Safe</div>
+
+        <!-- Блок додавання -->
+        <div class="add-card">
+            <input type="text" id="title" placeholder="Назва відео...">
+            <input type="text" id="url" placeholder="Пряме посилання на відео (mp4, m3u8 тощо)...">
+            <button id="add-btn">Додати посилання</button>
+            <input type="file" id="file-input" accept="video/mp4,video/webm,video/mkv" style="display: none;">
+            <button id="file-btn" class="secondary-btn">🎬 Обрати файл</button>
         </div>
-        
-        <div class="video-container">
-            <iframe id="youtubePlayer" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+        <!-- Відеоплеєр -->
+        <div class="video-container" id="video-container">
+            <div class="video-placeholder" id="placeholder">Оберіть відео з плейлиста</div>
+            <video id="player" controls playsinline></video>
+        </div>
+
+        <!-- Плейлист -->
+        <div class="playlist-container">
+            <div class="section-title">Список відео</div>
+            <div class="playlist-header">
+                <div>#</div>
+                <div>Назва</div>
+                <div style="text-align: right;">Дії</div>
+            </div>
+            <ul id="list"></ul>
         </div>
     </div>
+</div>
 
-    <script>
-        // Автоматичний фокус на поле введення при запуску на телевізорі
-        window.onload = function() {
-            document.getElementById('videoUrl').focus();
-        };
+<script>
+    let videos = JSON.parse(localStorage.getItem('videosanya_list')) || [];
+    let currentIndex = 0;
 
-        function extractVideoId(url) {
-            let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            let match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : null;
+    const player = document.getElementById('player');
+    const placeholder = document.getElementById('placeholder');
+    const titleInput = document.getElementById('title');
+    const urlInput = document.getElementById('url');
+    const listEl = document.getElementById('list');
+
+    function renderList() {
+        listEl.innerHTML = '';
+        if (videos.length === 0) {
+            listEl.innerHTML = '<li style="color: var(--text-muted); justify-content: center; display: flex; border: none; background: transparent;">Плейлист порожній</li>';
+            return;
         }
 
-        function loadVideo() {
-            let urlInput = document.getElementById('videoUrl').value;
-            let videoId = extractVideoId(urlInput);
-            
-            if (videoId) {
-                let iframe = document.getElementById('youtubePlayer');
-                // Використовуємо nocookie версію з параметром мінімізації рекламних рекомендацій
-                iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
-            } else {
-                alert('Некоректне посилання на YouTube!');
-            }
-        }
-    </script>
+        videos.forEach((vid, index) => {
+            const li = document.createElement('li');
+            if (index === currentIndex) li.classList.add('active');
+            li.innerHTML = `
+                <span class="video-index">${index + 1}</span>
+                <span class="video-name">${vid.title}</span>
+                <div class="action-btns">
+                    <button class="action-btn del-btn" onclick="deleteVideo(event, ${index})" title="Видалити">✕</button>
+                </div>
+            `;
+            li.onclick = () => playVideo(index);
+            listEl.appendChild(li);
+        });
+    }
 
+    function playVideo(index) {
+        if (index < 0 || index >= videos.length) return;
+        currentIndex = index;
+        const vid = videos[currentIndex];
+
+        placeholder.style.display = 'none';
+        player.src = vid.url;
+        player.play().catch(err => console.log("Автоплей заблоковано:", err));
+        renderList();
+    }
+
+    document.getElementById('add-btn').onclick = () => {
+        const title = titleInput.value.trim();
+        const url = urlInput.value.trim();
+        if (!url) return alert('Введіть посилання!');
+
+        videos.push({ title: title || url.split('/').pop() || 'Відео', url });
+        localStorage.setItem('videosanya_list', JSON.stringify(videos));
+
+        titleInput.value = '';
+        urlInput.value = '';
+        renderList();
+        if (videos.length === 1) playVideo(0);
+    };
+
+    const fileBtn = document.getElementById('file-btn');
+    const fileInput = document.getElementById('file-input');
+    fileBtn.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // URL.createObjectURL створює стрімінговий лінк прямо з пам'яті без завантаження на диск сервера
+            const streamUrl = URL.createObjectURL(file);
+            videos.push({ title: file.name.replace(/\.[^/.]+$/, ""), url: streamUrl });
+            localStorage.setItem('videosanya_list', JSON.stringify(videos));
+            renderList();
+            playVideo(videos.length - 1);
+        }
+        fileInput.value = '';
+    };
+
+    function deleteVideo(event, index) {
+        event.stopPropagation();
+        videos.splice(index, 1);
+        localStorage.setItem('videosanya_list', JSON.stringify(videos));
+        renderList();
+        if (videos.length === 0) {
+            player.src = '';
+            placeholder.style.display = 'block';
+        }
+    }
+
+    renderList();
+</script>
 </body>
 </html>
